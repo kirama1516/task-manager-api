@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -11,12 +12,21 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         $user = User::create([
             'name' => $validated['name'],
@@ -27,32 +37,45 @@ class AuthController extends Controller
 
         $token = JWTAuth::fromUser($user);
 
-        return response()->json(['token' => $token], 201);
+        return response()->json([
+            'status' => true,
+            'user' => $user,
+            'token' => $token
+        ], 201);
+
     }
 
     public function login(Request $request)
     {
-        $fields = $request->validate([
+        $validator = Validator::make($request->all(), [
             'usermail' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $loginType = filter_var($fields['usermail'], FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-        $loginColumn = $loginType === 'email' ? 'email' : 'username';
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-        $user = User::where($loginColumn, $fields['usermail'])->first();
+        $loginType = filter_var($request->input('usermail'), FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        $user = User::where($loginType, $request->input('usermail'))->first();
 
         if (! $user) {
             return response()->json([
                 'status' => false,
-                'message' => 'Incorrect Username or Email',
+                'message' => 'User not found',
             ], 401);
         }
 
-        if (! Hash::check($fields['password'], $user->password)) {
+        $validated = $validator->validated();
+
+        if (! Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'status' => false,
-                'message' => 'Incorrect Password',
+                'message' => 'Incorrect password',
             ], 401);
         }
 
@@ -60,10 +83,9 @@ class AuthController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Login successful',
             'user' => $user,
             'token' => $token,
-        ], 200);
+        ]);
     }
 
     public function logout()
