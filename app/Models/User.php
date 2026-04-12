@@ -46,4 +46,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
+
+    public function routeNotificationForFirebase()
+    {
+        return $this->fcm_token;
+    }
 }
