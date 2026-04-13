@@ -4,20 +4,30 @@ namespace App\Console\Commands;
 
 use App\Models\Task;
 use App\Notifications\TaskDueSoon;
-use Illuminate\Console\Attributes\Description;
-use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('app:send-task-reminders')]
-#[Description('Command description')]
 class SendTaskReminders extends Command
 {
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'app:send-task-reminders';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Sends notifications for tasks due within 24 hours';
+
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        // Find tasks due within the next 24 hours that haven't been notified
+        // Your logic is perfectly fine!
         $tasks = Task::where('due_date', '>', now())
                     ->where('due_date', '<=', now()->addHours(24))
                     ->where('reminder_sent', false)
@@ -30,5 +40,7 @@ class SendTaskReminders extends Command
                 $task->update(['reminder_sent' => true]);
             }
         }
+        
+        $this->info('Reminders sent successfully.');
     }
 }
